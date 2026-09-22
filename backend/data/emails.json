@@ -1,0 +1,39 @@
+{
+  "inbox": [
+    {
+      "id": "email-decano-001",
+      "sender": "Decanatura de Ingeniería <decanatura.ingenieria@universidad.edu.co>",
+      "sender_name": "Decano Roberto Mendoza",
+      "recipient": "estudiante@universidad.edu.co",
+      "subject": "Respuesta: Aprobación de prórroga para entrega de Proyecto GUTI",
+      "snippet": "Estimado estudiante, he revisado su solicitud. Se autoriza la sustentación técnica del asistente multi-agente...",
+      "body": "Estimado estudiante,\n\nHe revisado detenidamente su comunicación respecto al desarrollo del Asistente Personal GUTI con control por voz y conectividad Tailscale. Le confirmo que la fecha de sustentación del segundo corte ha quedado ratificada y su avance técnico cumple con los requerimientos esperados para la evaluación.\n\nPor favor asegúrese de tener configurado el webhook bancario y la demostración de los agentes en vivo.\n\nAtentamente,\nDr. Roberto Mendoza\nDecano de la Facultad de Ingeniería",
+      "date": "2026-09-22T19:50:07.172451+00:00",
+      "is_read": false,
+      "is_urgent": true
+    },
+    {
+      "id": "email-prof-moviles-002",
+      "sender": "Profesor Carlos Gómez <carlos.gomez@universidad.edu.co>",
+      "sender_name": "Profesor Carlos Gómez",
+      "recipient": "estudiante@universidad.edu.co",
+      "subject": "Rúbrica y Lineamientos Taller Segundo Corte - Aplicaciones Móviles",
+      "snippet": "Recordatorio sobre los criterios de evaluación: App nativa, orquestador multi-agente, VPN Mesh Tailscale...",
+      "body": "Apreciados estudiantes,\n\nRecuerden que para la entrega de este segundo corte se evaluará rigurosamente el funcionamiento del orquestador backend con Function Calling, la persistencia en Supabase y la ingesta cero fricción mediante Apple Shortcuts o Android listeners a través de la IP de Tailscale.\n\nMuchos éxitos en la entrega.",
+      "date": "2026-09-22T19:50:07.172451+00:00",
+      "is_read": true,
+      "is_urgent": false
+    }
+  ],
+  "drafts": [
+    {
+      "id": "draft-beb97705-747a-40a8-ac44-263118d26b99",
+      "recipient": "Destinatario",
+      "subject": "Asunto",
+      "body": "",
+      "created_at": "2026-09-22T19:55:23.484367+00:00",
+      "status": "borrador"
+    }
+  ],
+  "sent": []
+}

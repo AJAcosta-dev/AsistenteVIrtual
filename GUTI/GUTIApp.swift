@@ -1,10 +1,3 @@
-//
-//  GUTIApp.swift
-//  GUTI
-//
-//  Created by El Putas on 9/10/26.
-//
-
 import SwiftUI
 
 @main

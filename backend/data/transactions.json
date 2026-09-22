@@ -1,0 +1,32 @@
+[
+  {
+    "id": "1789964159",
+    "amount": 25000.0,
+    "merchant": "McDonald",
+    "category": "comida",
+    "date": "2026-09-20T23:15:59.006456",
+    "month": 9,
+    "year": 2026,
+    "is_income": false
+  },
+  {
+    "id": "1789964216",
+    "amount": 50000.0,
+    "merchant": "Exito",
+    "category": "alimentación",
+    "date": "2026-09-20T23:16:55.806196",
+    "month": 9,
+    "year": 2026,
+    "is_income": false
+  },
+  {
+    "id": "1789964458",
+    "amount": 30000.0,
+    "merchant": "Starbucks",
+    "category": "alimentación",
+    "date": "2026-09-20T23:20:58.325921",
+    "month": 9,
+    "year": 2026,
+    "is_income": false
+  }
+]

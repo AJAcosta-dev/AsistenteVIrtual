@@ -1,0 +1,38 @@
+{
+  "monthly_budget": 1500000.0,
+  "fixed_obligations": 600000.0,
+  "credit_cards": [
+    {
+      "bank": "Bancolombia",
+      "card_name": "Mastercard Joven",
+      "total_limit": 2000000.0,
+      "used_amount": 450000.0,
+      "cutoff_date": "15 de cada mes",
+      "due_date": "05 del próximo mes",
+      "interest_rate": "24.5% E.A."
+    },
+    {
+      "bank": "Nu Colombia",
+      "card_name": "Nu Moradita",
+      "total_limit": 1200000.0,
+      "used_amount": 180000.0,
+      "cutoff_date": "22 de cada mes",
+      "due_date": "02 del próximo mes",
+      "interest_rate": "23.9% E.A."
+    }
+  ],
+  "savings_goals": [
+    {
+      "name": "Fondo de Emergencia",
+      "target_amount": 1000000.0,
+      "current_amount": 650000.0,
+      "category": "seguridad"
+    },
+    {
+      "name": "Viaje Académico / Seminario",
+      "target_amount": 800000.0,
+      "current_amount": 320000.0,
+      "category": "educación"
+    }
+  ]
+}

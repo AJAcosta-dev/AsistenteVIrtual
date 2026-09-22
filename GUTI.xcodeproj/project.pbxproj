@@ -10,9 +10,22 @@
 		E6ACEC72305376590001DDFD /* GUTI.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GUTI.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		E6423B043060F80000C45B86 /* Exceptions for "GUTI" folder in "GUTI" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = E6ACEC71305376590001DDFD /* GUTI */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		E6ACEC74305376590001DDFD /* GUTI */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				E6423B043060F80000C45B86 /* Exceptions for "GUTI" folder in "GUTI" target */,
+			);
 			path = GUTI;
 			sourceTree = "<group>";
 		};
@@ -251,8 +264,12 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = J7W8CZH89A;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = GUTI/Info.plist;
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "GUTI necesita acceso al micrófono para recibir comandos de voz.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "GUTI necesita reconocimiento de voz para interpretar tus comandos.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -282,8 +299,12 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = J7W8CZH89A;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = GUTI/Info.plist;
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "GUTI necesita acceso al micrófono para recibir comandos de voz.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "GUTI necesita reconocimiento de voz para interpretar tus comandos.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
