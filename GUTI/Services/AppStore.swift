@@ -11,6 +11,17 @@ final class AppStore: ObservableObject {
     @Published var events: [GutiEvent] = []
     @Published var savingsGoals: [SavingsGoal] = []
 
+    enum ConnectionState {
+        case checking
+        case online
+        case offline
+    }
+
+    /// Alcance del backend vía Tailscale; se muestra en los encabezados.
+    @Published var connection: ConnectionState = .checking
+
+    private var isRefreshing = false
+
     // MARK: - Initialization
 
     init() {
@@ -512,10 +523,19 @@ final class AppStore: ObservableObject {
     }
 
     func refreshAll() async {
-        await loadTransactionsFromBackend()
-        await loadEventsFromBackend()
-        await loadTasksFromBackend()
-        await loadGoalsFromBackend()
+        // Evita recargas duplicadas (init + onAppear + pull-to-refresh simultáneos).
+        guard !isRefreshing else { return }
+        isRefreshing = true
+        defer { isRefreshing = false }
+
+        connection = await APIService.shared.isReachable() ? .online : .offline
+        guard connection == .online else { return }
+
+        async let transactions: Void = loadTransactionsFromBackend()
+        async let events: Void = loadEventsFromBackend()
+        async let tasks: Void = loadTasksFromBackend()
+        async let goals: Void = loadGoalsFromBackend()
+        _ = await (transactions, events, tasks, goals)
     }
 
     func loadTasksFromBackend() async {

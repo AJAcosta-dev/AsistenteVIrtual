@@ -2,8 +2,15 @@ import SwiftUI
 
 struct ContentView: View {
     
+    // En DEBUG se puede abrir una pestaña concreta con el argumento de lanzamiento
+    // `-GUTIInitialTab <n>` (útil para capturas y pruebas en el simulador).
+    #if DEBUG
+    @State private var selectedTab = UserDefaults.standard.integer(forKey: "GUTIInitialTab")
+    #else
     @State private var selectedTab = 0
+    #endif
     @StateObject private var appStore = AppStore()
+    @StateObject private var chat = ChatSession()
     
     var body: some View {
         ZStack {
@@ -37,6 +44,20 @@ struct ContentView: View {
         }
         .preferredColorScheme(.dark)
         .environmentObject(appStore)
+        .environmentObject(chat)
+        .task {
+            // Tras cada respuesta de GUTI (p. ej. "agrega una tarea") se refrescan las demás pestañas.
+            chat.onResponse = { [weak appStore] in
+                await appStore?.refreshAll()
+            }
+
+            #if DEBUG
+            // `-GUTIAutoPrompt "<texto>"` envía un comando al abrir (pruebas en simulador).
+            if let prompt = UserDefaults.standard.string(forKey: "GUTIAutoPrompt") {
+                chat.send(prompt)
+            }
+            #endif
+        }
     }
 }
 
@@ -141,4 +162,12 @@ extension Color {
 
 #Preview {
     ContentView()
+}
+
+extension String {
+    /// Solo la primera letra en mayúscula ("Martes, 22 de septiembre"),
+    /// a diferencia de `capitalized`, que produciría "Martes, 22 De Septiembre".
+    var capitalizedFirst: String {
+        prefix(1).uppercased() + dropFirst()
+    }
 }

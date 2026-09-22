@@ -262,6 +262,21 @@ final class APIService {
         }
     }
 
+    // MARK: - Health
+
+    /// Comprueba si el backend responde (timeout corto para no bloquear la UI).
+    func isReachable() async -> Bool {
+        guard let url = URL(string: "\(baseURL)/health") else { return false }
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 4
+        do {
+            let (_, response) = try await URLSession.shared.data(for: request)
+            return (response as? HTTPURLResponse)?.statusCode == 200
+        } catch {
+            return false
+        }
+    }
+
     // MARK: - Command
 
     func sendCommand(

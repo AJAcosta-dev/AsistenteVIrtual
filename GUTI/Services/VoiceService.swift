@@ -12,6 +12,9 @@ final class VoiceService: NSObject, ObservableObject {
     @Published var recognizedText = ""
     @Published var authorizationStatus: SFSpeechRecognizerAuthorizationStatus = .notDetermined
     @Published var speechAvailable = false
+    @Published var isSpeaking = false
+    /// Nivel del micrófono normalizado (0...1) para animar la onda de voz.
+    @Published var audioLevel: Float = 0
 
     // MARK: - Audio
 
@@ -506,6 +509,11 @@ final class VoiceService: NSObject, ObservableObject {
                 return
             }
 
+            let level = Self.normalizedLevel(of: buffer)
+            Task { @MainActor in
+                self.audioLevel = level
+            }
+
             guard let converter = self.audioConverter else {
                 return
             }
@@ -598,13 +606,8 @@ final class VoiceService: NSObject, ObservableObject {
                     buffer: convertedBuffer
                 )
 
-            let result =
-                inputBuilder.yield(
-                    analyzerInput
-                )
-
-            print(
-                "📤 Audio enviado al SpeechAnalyzer: \(result)"
+            inputBuilder.yield(
+                analyzerInput
             )
         }
 
@@ -661,6 +664,7 @@ final class VoiceService: NSObject, ObservableObject {
     private func stopRecordingInternal() async {
 
         isRecording = false
+        audioLevel = 0
 
         print(
             "🎙️ Deteniendo grabación..."
@@ -861,6 +865,29 @@ final class VoiceService: NSObject, ObservableObject {
         print("🔇 GUTI detuvo la reproducción.")
     }
 
+    // MARK: - Audio Level
+
+    /// RMS del buffer convertido a una escala 0...1 (-50 dB → 0, 0 dB → 1).
+    nonisolated private static func normalizedLevel(
+        of buffer: AVAudioPCMBuffer
+    ) -> Float {
+
+        guard let samples = buffer.floatChannelData?[0],
+              buffer.frameLength > 0 else {
+            return 0
+        }
+
+        let count = Int(buffer.frameLength)
+        var sum: Float = 0
+        for index in 0..<count {
+            sum += samples[index] * samples[index]
+        }
+
+        let rms = sqrt(sum / Float(count))
+        let decibels = 20 * log10(max(rms, 0.000_01))
+        return min(max((decibels + 50) / 50, 0), 1)
+    }
+
     // MARK: - Authorization
 
     private var authorizationStatusDescription: String {
@@ -937,6 +964,7 @@ extension VoiceService: AVSpeechSynthesizerDelegate {
         _ synthesizer: AVSpeechSynthesizer,
         didStart utterance: AVSpeechUtterance
     ) {
+        Task { @MainActor in self.isSpeaking = true }
 
         print(
             "🔊 GUTI comenzó a hablar."
@@ -947,6 +975,7 @@ extension VoiceService: AVSpeechSynthesizerDelegate {
         _ synthesizer: AVSpeechSynthesizer,
         didFinish utterance: AVSpeechUtterance
     ) {
+        Task { @MainActor in self.isSpeaking = false }
 
         print(
             "🔊 GUTI terminó de hablar."
@@ -957,6 +986,7 @@ extension VoiceService: AVSpeechSynthesizerDelegate {
         _ synthesizer: AVSpeechSynthesizer,
         didCancel utterance: AVSpeechUtterance
     ) {
+        Task { @MainActor in self.isSpeaking = false }
 
         print(
             "🔇 GUTI dejó de hablar."

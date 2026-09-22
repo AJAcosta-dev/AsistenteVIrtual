@@ -3,6 +3,7 @@ import SwiftUI
 struct DashboardView: View {
     
     @EnvironmentObject private var appStore: AppStore
+    @EnvironmentObject private var chat: ChatSession
     @Binding var selectedTab: Int
     
     @State private var showingAddTransaction = false
@@ -84,6 +85,8 @@ struct DashboardView: View {
                         
                         greetingSection
                         
+                        gutiSection
+                        
                         priorityCard
                         
                         HStack(spacing: 14) {
@@ -96,8 +99,6 @@ struct DashboardView: View {
                         agendaCard
                         
                         wellnessCard
-                        
-                        gutiSection
                     }
                     .padding(.horizontal, 20)
                     .padding(.top, 18)
@@ -221,11 +222,18 @@ struct DashboardView: View {
                     
                     Circle()
                         .fill(
-                            Color.cyanGuti
+                            appStore.connection == .offline
+                            ? Color.pinkGuti
+                            : Color.cyanGuti
                         )
                         .frame(
                             width: 7,
                             height: 7
+                        )
+                        .accessibilityLabel(
+                            appStore.connection == .offline
+                            ? "Sin conexión"
+                            : "En línea"
                         )
                 }
             }
@@ -657,7 +665,7 @@ struct DashboardView: View {
         }
         .frame(
             maxWidth: .infinity,
-            minHeight: 220
+            minHeight: 170
         )
         .padding(18)
         .background(
@@ -788,7 +796,7 @@ struct DashboardView: View {
         }
         .frame(
             maxWidth: .infinity,
-            minHeight: 220
+            minHeight: 170
         )
         .padding(18)
         .background(
@@ -1270,114 +1278,71 @@ struct DashboardView: View {
     
     // MARK: - GUTI
     
+    /// Acceso directo por voz: abre la pestaña GUTI y empieza a escuchar.
     private var gutiSection: some View {
-        VStack(spacing: 12) {
-            
-            Button {
-                withAnimation(
-                    .easeInOut(duration: 0.25)
-                ) {
-                    selectedTab = 4
-                }
-            } label: {
-                
-                HStack {
-                    
-                    ZStack {
-                        
-                        Circle()
-                            .fill(
-                                Color.white.opacity(0.2)
-                            )
-                            .frame(
-                                width: 44,
-                                height: 44
-                            )
-                        
-                        Image(
-                            systemName: "mic.fill"
-                        )
-                        .foregroundStyle(.white)
-                    }
-                    
-                    VStack(
-                        alignment: .leading,
-                        spacing: 3
-                    ) {
-                        
-                        Text(
-                            "HABLAR CON GUTI"
-                        )
-                        .font(
-                            .system(
-                                size: 14,
-                                weight: .bold
-                            )
-                        )
-                        .foregroundStyle(.white)
-                        
-                        HStack(spacing: 5) {
-                            
-                            Circle()
-                                .fill(.green)
-                                .frame(
-                                    width: 7,
-                                    height: 7
-                                )
-                            
-                            Text(
-                                "Asistente disponible"
-                            )
-                            .font(
-                                .system(size: 11)
-                            )
-                            .foregroundStyle(
-                                Color.white.opacity(0.8)
-                            )
-                        }
-                    }
-                    
-                    Spacer()
-                    
-                    Text("ABRIR")
-                        .font(
-                            .system(
-                                size: 10,
-                                weight: .medium,
-                                design: .monospaced
-                            )
-                        )
-                        .foregroundStyle(.white)
-                        .padding(
-                            .horizontal,
-                            12
-                        )
-                        .padding(
-                            .vertical,
-                            8
-                        )
-                        .background(
-                            Color.black.opacity(0.2)
-                        )
-                        .clipShape(Capsule())
-                }
-                .padding(15)
-                .background(
-                    LinearGradient(
-                        colors: [
-                            Color.red,
-                            Color.red.opacity(0.8)
-                        ],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                )
-                .clipShape(
-                    RoundedRectangle(
-                        cornerRadius: 22
-                    )
-                )
+        Button {
+            withAnimation(.easeInOut(duration: 0.25)) {
+                selectedTab = 4
             }
+            if appStore.connection != .offline {
+                chat.startRecording()
+            }
+        } label: {
+            HStack(spacing: 14) {
+                ZStack {
+                    Circle()
+                        .fill(Color.white.opacity(0.2))
+                        .frame(width: 46, height: 46)
+                    
+                    Image(systemName: "mic.fill")
+                        .font(.system(size: 19, weight: .semibold))
+                        .foregroundStyle(.white)
+                }
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("HABLAR CON GUTI")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(.white)
+                    
+                    HStack(spacing: 6) {
+                        Circle()
+                            .fill(appStore.connection == .offline ? Color.pinkGuti : .white)
+                            .frame(width: 7, height: 7)
+                        
+                        Text(gutiStatusText)
+                            .font(.system(size: 11))
+                            .foregroundStyle(Color.white.opacity(0.85))
+                            .lineLimit(1)
+                    }
+                }
+                
+                Spacer()
+                
+                Image(systemName: "waveform")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.9))
+                    .symbolEffect(.variableColor.iterative, options: .repeat(.continuous))
+            }
+            .padding(15)
+            .background(
+                LinearGradient(
+                    colors: [Color.cyanGuti.opacity(0.85), Color.purpleGuti],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 22))
+            .shadow(color: Color.purpleGuti.opacity(0.25), radius: 14, y: 6)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Hablar con GUTI")
+    }
+    
+    private var gutiStatusText: String {
+        switch appStore.connection {
+        case .online: return "Toca y pregunta lo que necesites"
+        case .offline: return "Sin conexión con el servidor"
+        case .checking: return "Conectando…"
         }
     }
     
@@ -1429,7 +1394,7 @@ struct DashboardView: View {
         
         return formatter
             .string(from: Date())
-            .capitalized
+            .capitalizedFirst
     }
     
     private func dueDateDescription(
@@ -1511,5 +1476,8 @@ struct DashboardView: View {
     )
     .environmentObject(
         AppStore()
+    )
+    .environmentObject(
+        ChatSession()
     )
 }

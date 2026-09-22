@@ -136,14 +136,20 @@ struct AgendaView: View {
                 
                 Circle()
                     .fill(
-                        Color.cyanGuti
+                        appStore.connection == .offline
+                        ? Color.pinkGuti
+                        : Color.cyanGuti
                     )
                     .frame(
                         width: 8,
                         height: 8
                     )
                 
-                Text("ONLINE  // AGENDA")
+                Text(
+                    appStore.connection == .offline
+                    ? "OFFLINE  // AGENDA"
+                    : "ONLINE  // AGENDA"
+                )
                     .font(
                         .system(
                             size: 12,
@@ -400,30 +406,33 @@ struct AgendaView: View {
                         Color.grayGuti
                     )
                 
-                HStack {
-                    
-                    Text(
-                        formatTime(
-                            focusRemaining
-                        )
+                Text(
+                    formatTime(
+                        focusRemaining
                     )
-                    .font(
-                        .system(
-                            size: 27,
-                            weight: .bold,
-                            design: .monospaced
-                        )
+                )
+                .font(
+                    .system(
+                        size: 27,
+                        weight: .bold,
+                        design: .monospaced
                     )
-                    
-                    Text(
-                        isFocusRunning
-                        ? "En progreso"
-                        : "25 minutos"
-                    )
-                    .foregroundStyle(
-                        Color.grayGuti
-                    )
-                }
+                )
+                .lineLimit(1)
+                .fixedSize()
+                .contentTransition(.numericText(countsDown: true))
+                
+                Text(
+                    isFocusRunning
+                    ? "En progreso"
+                    : "25 minutos"
+                )
+                .font(
+                    .system(size: 13)
+                )
+                .foregroundStyle(
+                    Color.grayGuti
+                )
             }
             
             Spacer()
@@ -929,7 +938,7 @@ struct AgendaView: View {
         
         return formatter
             .string(from: date)
-            .capitalized
+            .capitalizedFirst
     }
     
     private func weekNumber(
@@ -1311,6 +1320,6 @@ struct EventEditorView: View {
         
         return formatter
             .string(from: date)
-            .capitalized
+            .capitalizedFirst
     }
 }
