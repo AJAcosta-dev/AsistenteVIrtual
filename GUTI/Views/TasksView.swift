@@ -1258,29 +1258,16 @@ struct TaskEditorView: View {
         
         if let taskToEdit {
             
-            guard let index =
-                    appStore.tasks.firstIndex(
-                        where: {
-                            $0.id == taskToEdit.id
-                        }
-                    )
-            else {
-                return
-            }
-            
-            appStore.tasks[index].title =
-                cleanTitle
-            
-            appStore.tasks[index].category =
-                category
-            
-            appStore.tasks[index].priority =
-                priority
-            
-            appStore.tasks[index].dueDate =
-                hasDueDate
-                ? dueDate
-                : nil
+            appStore.updateTask(
+                taskToEdit,
+                title: cleanTitle,
+                category: category,
+                dueDate:
+                    hasDueDate
+                    ? dueDate
+                    : nil,
+                priority: priority
+            )
             
         } else {
             

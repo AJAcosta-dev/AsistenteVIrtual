@@ -174,6 +174,16 @@ TOOL_DEFINITIONS = [
                 "properties": {
                     "title": {"type": "string", "description": "Título o descripción de la tarea"},
                     "description": {"type": "string", "description": "Detalles adicionales opcionales"},
+                    "priority": {
+                        "type": "string",
+                        "enum": ["alta", "media", "baja"],
+                        "description": "Prioridad; 'alta' si el usuario dice urgente o importante",
+                    },
+                    "category": {
+                        "type": "string",
+                        "enum": ["universidad", "trabajo", "personal", "proyecto"],
+                        "description": "Área de la tarea (ej. un taller o parcial es 'universidad')",
+                    },
                 },
                 "required": ["title"],
             },
@@ -248,6 +258,8 @@ TOOL_MAP = {
     "add_task": lambda **kwargs: add_task(
         title=kwargs.get("title", ""),
         description=kwargs.get("description"),
+        priority=kwargs.get("priority"),
+        category=kwargs.get("category"),
     ),
     "complete_task": lambda **kwargs: complete_task(kwargs.get("title", "")),
     "get_upcoming_events": lambda **kwargs: _format_upcoming_events(),
@@ -411,8 +423,11 @@ def _fallback_intent_detection(text: str) -> list[tuple[str, dict]]:
 
     # 1. ¿Revisa si el decano me respondió el correo? / Correos
     if any(k in text_low for k in ["decano", "correo", "email", "buzon", "mensaje"]):
-        query = "decano" if "decano" in text_low else None
-        invocations.append(("check_emails", {"query": query}))
+        query = next((k for k in ("decano", "profesor", "banco") if k in text_low), None)
+        invocations.append((
+            "check_emails",
+            {"query": query, "unread_only": "no leido" in text_low or "nuevos" in text_low},
+        ))
 
     # 2. ¿Cuánto dinero me queda disponible para salir este fin de semana? / Presupuesto
     if any(k in text_low for k in ["disponible para salir", "fin de semana", "cuanto dinero me queda", "liquidez"]):

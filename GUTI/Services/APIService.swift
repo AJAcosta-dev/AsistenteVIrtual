@@ -122,6 +122,9 @@ struct BackendTask: Codable {
     let dueDate: String?
     let completed: Bool
     let createdAt: String?
+    let priority: String?   // alta | media | baja
+    let category: String?   // universidad | trabajo | personal | proyecto
+    let status: String?     // pendiente | en_progreso | completado
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -130,18 +133,43 @@ struct BackendTask: Codable {
         case dueDate = "due_date"
         case completed
         case createdAt = "created_at"
+        case priority
+        case category
+        case status
     }
 }
 
 struct CreateTaskRequest: Codable {
+    let id: String
     let title: String
     let description: String?
     let dueDate: String?
+    let priority: String
+    let category: String
 
     enum CodingKeys: String, CodingKey {
+        case id
         case title
         case description
         case dueDate = "due_date"
+        case priority
+        case category
+    }
+}
+
+struct UpdateTaskRequest: Codable {
+    let title: String
+    let priority: String
+    let category: String
+    let dueDate: String?
+    let clearDueDate: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case title
+        case priority
+        case category
+        case dueDate = "due_date"
+        case clearDueDate = "clear_due_date"
     }
 }
 
@@ -489,20 +517,48 @@ final class APIService {
     }
 
     func addTask(
+        id: String,
         title: String,
         description: String? = nil,
-        dueDate: String? = nil
+        dueDate: String? = nil,
+        priority: String,
+        category: String
     ) async throws -> SimpleMessageResponse {
         guard let url = URL(string: "\(baseURL)/api/tasks") else {
             throw APIServiceError.invalidURL
         }
         let requestBody = CreateTaskRequest(
+            id: id,
             title: title,
             description: description,
-            dueDate: dueDate
+            dueDate: dueDate,
+            priority: priority,
+            category: category
         )
         let body = try JSONEncoder().encode(requestBody)
         return try await performRequest(url: url, method: "POST", body: body)
+    }
+
+    func updateTask(
+        id: String,
+        title: String,
+        priority: String,
+        category: String,
+        dueDate: String?
+    ) async throws {
+        guard let url = URL(string: "\(baseURL)/api/tasks/\(id)") else {
+            throw APIServiceError.invalidURL
+        }
+        let requestBody = UpdateTaskRequest(
+            title: title,
+            priority: priority,
+            category: category,
+            dueDate: dueDate,
+            clearDueDate: dueDate == nil
+        )
+        let body = try JSONEncoder().encode(requestBody)
+        struct UpdateTaskResponse: Codable {}
+        let _: UpdateTaskResponse = try await performRequest(url: url, method: "PATCH", body: body)
     }
 
     func toggleTask(id: String) async throws {

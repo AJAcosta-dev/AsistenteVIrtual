@@ -53,12 +53,18 @@ create table if not exists public.tasks (
 
 alter table public.tasks add column if not exists priority text not null default 'media';
 alter table public.tasks add column if not exists status   text not null default 'pendiente';
+alter table public.tasks add column if not exists category text not null default 'personal';
 alter table public.tasks add column if not exists source_email_id text
     references public.emails(id) on delete set null;
 
 do $$ begin
     alter table public.tasks add constraint tasks_priority_check
         check (priority in ('alta', 'media', 'baja'));
+exception when duplicate_object then null; end $$;
+
+do $$ begin
+    alter table public.tasks add constraint tasks_category_check
+        check (category in ('universidad', 'trabajo', 'personal', 'proyecto'));
 exception when duplicate_object then null; end $$;
 
 do $$ begin
