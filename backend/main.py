@@ -27,6 +27,8 @@ from agents.secretary import (
     complete_task,
     check_emails,
     draft_email,
+    set_task_completed,
+    update_task,
 )
 from agents.agenda import create_event, get_upcoming_events, delete_event
 from supabase_client import supabase
@@ -76,6 +78,17 @@ class TaskCreateRequest(BaseModel):
     title: str
     description: str | None = None
     due_date: str | None = None
+    priority: str | None = None   # alta | media | baja
+    category: str | None = None   # universidad | trabajo | personal | proyecto
+    id: str | None = None         # la app envía su UUID para poder editar/borrar sin recargar
+
+
+class TaskUpdateRequest(BaseModel):
+    title: str | None = None
+    priority: str | None = None
+    category: str | None = None
+    due_date: str | None = None
+    clear_due_date: bool = False
 
 
 class DraftEmailRequest(BaseModel):
@@ -267,6 +280,9 @@ def create_new_task(request: TaskCreateRequest):
         title=request.title,
         description=request.description,
         due_date=request.due_date,
+        priority=request.priority,
+        category=request.category,
+        task_id=request.id,
     )
     return {"message": msg}
 
@@ -279,13 +295,28 @@ def toggle_task_status(task_id: str):
         if not current.data:
             raise HTTPException(status_code=404, detail="Tarea no encontrada.")
         new_val = not current.data[0].get("completed", False)
-        updated = supabase.table("tasks").update({"completed": new_val}).eq("id", task_id).execute()
-        return {"task": updated.data[0]}
+        return {"task": set_task_completed(task_id, new_val)}
     except HTTPException:
         raise
     except Exception as error:
         print(f"Error actualizando tarea: {error}")
         raise HTTPException(status_code=500, detail="No se pudo actualizar la tarea.")
+
+
+@app.patch("/api/secretary/tasks/{task_id}")
+@app.patch("/api/tasks/{task_id}")
+def edit_task(task_id: str, request: TaskUpdateRequest):
+    task = update_task(
+        task_id,
+        title=request.title,
+        priority=request.priority,
+        category=request.category,
+        due_date=request.due_date,
+        clear_due_date=request.clear_due_date,
+    )
+    if task is None:
+        raise HTTPException(status_code=404, detail="Tarea no encontrada.")
+    return {"task": task}
 
 
 @app.delete("/api/secretary/tasks/{task_id}")

@@ -3,7 +3,8 @@ import json
 import os
 from uuid import uuid4
 
-from supabase_client import supabase
+from supabase_client import execute_with_fallback, insert_with_fallback, supabase
+from agents import mailbox
 
 
 # ============================================================
@@ -83,11 +84,31 @@ def _get_emails_store() -> dict:
     return default_store
 
 
-def _get_inbox() -> list[dict]:
+def _cache_emails(emails: list[dict]):
+    """Guarda en Supabase los correos leídos por IMAP (para borradores/tareas con FK)."""
+    try:
+        rows = [{k: v for k, v in e.items() if k != "body" or v} for e in emails if e.get("date")]
+        if rows:
+            supabase.table("emails").upsert(rows).execute()
+    except Exception as e:
+        print(f"Aviso: no se pudieron cachear correos en Supabase ({e})")
+
+
+def _get_inbox(unread_only: bool = False) -> list[dict]:
     """
-    Bandeja de entrada desde Supabase (tabla emails). Si la tabla no existe
-    o está vacía, usa el buzón local data/emails.json.
+    Orden de fuentes:
+      1. Buzón real por IMAP (si MAIL_ADDRESS y MAIL_APP_PASSWORD están en .env).
+      2. Tabla emails de Supabase.
+      3. Buzón local data/emails.json (demo sin conexión).
     """
+    if mailbox.is_configured():
+        try:
+            emails = mailbox.fetch_inbox(unread_only=unread_only)
+            _cache_emails(emails)
+            return emails
+        except Exception as e:
+            print(f"Aviso: IMAP no disponible, usando respaldo ({e})")
+
     try:
         result = supabase.table("emails").select("*").order("date", desc=True).execute()
         if result.data:
@@ -112,7 +133,7 @@ def check_emails(query: str | None = None, unread_only: bool = False) -> str:
     Inspecciona la bandeja de entrada para listar o buscar correos.
     Permite filtrar por remitente o tema (ej. 'decano', 'profesor', 'taller').
     """
-    inbox = _get_inbox()
+    inbox = _get_inbox(unread_only=unread_only)
 
     if unread_only:
         inbox = [m for m in inbox if not m.get("is_read", False)]
@@ -121,18 +142,24 @@ def check_emails(query: str | None = None, unread_only: bool = False) -> str:
         q = query.lower()
         matched = [
             m for m in inbox
-            if q in m.get("sender", "").lower()
-            or q in m.get("sender_name", "").lower()
-            or q in m.get("subject", "").lower()
-            or q in m.get("body", "").lower()
+            if q in (m.get("sender") or "").lower()
+            or q in (m.get("sender_name") or "").lower()
+            or q in (m.get("subject") or "").lower()
+            or q in (m.get("body") or "").lower()
         ]
     else:
-        matched = inbox
+        matched = inbox[:10]
+
+    # Prioriza remitentes urgentes y no leídos.
+    matched.sort(key=lambda m: (not m.get("is_urgent"), bool(m.get("is_read"))))
 
     if not matched:
         if query:
             return f"No se encontraron correos relacionados con '{query}'."
         return "No tienes correos nuevos en la bandeja de entrada."
+
+    # Con pocos resultados se incluye el cuerpo completo para que GUTI pueda resumir el hilo.
+    include_body = len(matched) <= 3
 
     response = f"Encontré {len(matched)} correo(s):\n"
     for email in matched:
@@ -143,8 +170,12 @@ def check_emails(query: str | None = None, unread_only: bool = False) -> str:
             f"\n📨 De: {email.get('sender_name', email.get('sender'))}\n"
             f"   Asunto: {email.get('subject')}\n"
             f"   Estado: {estado}\n"
-            f"   Contenido: {email.get('snippet') or (email.get('body') or '')[:140]}\n"
+            f"   Fecha: {(email.get('date') or '')[:10]}\n"
         )
+        if include_body and email.get("body"):
+            response += f"   Cuerpo: {email['body'][:1500]}\n"
+        else:
+            response += f"   Contenido: {email.get('snippet') or (email.get('body') or '')[:140]}\n"
 
     return response.strip()
 
@@ -162,6 +193,14 @@ def draft_email(recipient: str, subject: str, body: str) -> str:
         "status": "borrador",
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
+    saved_in_gmail = False
+    if mailbox.is_configured():
+        try:
+            mailbox.save_draft(recipient, subject, body)
+            saved_in_gmail = True
+        except Exception as e:
+            print(f"Aviso: no se pudo guardar el borrador en el buzón real ({e})")
+
     try:
         supabase.table("email_drafts").insert(draft).execute()
     except Exception as e:
@@ -175,7 +214,9 @@ def draft_email(recipient: str, subject: str, body: str) -> str:
         f"• Para: {recipient}\n"
         f"• Asunto: {subject}\n"
         f"• Cuerpo:\n\"{body}\"\n\n"
-        f"Quedó guardado en la carpeta de borradores listo para tu confirmación."
+        + ("Quedó en la carpeta Borradores de tu correo, listo para que lo revises y lo envíes."
+           if saved_in_gmail
+           else "Quedó guardado en borradores, listo para tu confirmación.")
     )
 
 
@@ -193,9 +234,18 @@ def summarize_email(subject: str, content: str) -> str:
 # FUNCIONES DE TAREAS Y RECORDATORIOS (SUPABASE)
 # ============================================================
 
+PRIORITIES = ("alta", "media", "baja")
+CATEGORIES = ("universidad", "trabajo", "personal", "proyecto")
+
+
+def _normalize_choice(value: str | None, allowed: tuple[str, ...], default: str) -> str:
+    value = (value or "").strip().lower()
+    return value if value in allowed else default
+
+
 def get_pending_tasks() -> str:
     """
-    Obtiene las tareas pendientes desde Supabase.
+    Obtiene las tareas pendientes desde Supabase, ordenadas por prioridad.
     """
     try:
         result = (
@@ -213,10 +263,22 @@ def get_pending_tasks() -> str:
     if not tasks:
         return "No tienes tareas pendientes."
 
+    rank = {"alta": 0, "media": 1, "baja": 2}
+    tasks.sort(key=lambda t: rank.get(t.get("priority") or "media", 1))
+
     response = f"Tienes {len(tasks)} tarea(s) pendiente(s):\n"
     for index, task in enumerate(tasks, start=1):
-        desc = f" ({task['description']})" if task.get("description") else ""
-        response += f"{index}. {task['title']}{desc}\n"
+        details = []
+        if task.get("priority") == "alta":
+            details.append("prioridad alta")
+        if task.get("status") == "en_progreso":
+            details.append("en progreso")
+        if task.get("due_date"):
+            details.append(f"vence {task['due_date'][:10]}")
+        if task.get("description"):
+            details.append(task["description"])
+        suffix = f" ({', '.join(details)})" if details else ""
+        response += f"{index}. {task['title']}{suffix}\n"
 
     return response.strip()
 
@@ -225,31 +287,76 @@ def add_task(
     title: str,
     description: str | None = None,
     due_date: str | None = None,
+    priority: str | None = None,
+    category: str | None = None,
+    task_id: str | None = None,
 ) -> str:
     """
-    Agrega una nueva tarea en Supabase.
+    Agrega una nueva tarea en Supabase con prioridad (alta/media/baja) y
+    categoría (universidad/trabajo/personal/proyecto).
     """
     title = title.strip()
     if not title:
         return "No se puede crear una tarea vacía."
 
     new_task = {
-        "id": str(uuid4()),
+        "id": (task_id or str(uuid4())).strip().lower(),
         "title": title,
         "description": description,
         "due_date": due_date,
         "completed": False,
+        "status": "pendiente",
+        "priority": _normalize_choice(priority, PRIORITIES, "media"),
+        "category": _normalize_choice(category, CATEGORIES, "personal"),
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
 
     try:
-        result = supabase.table("tasks").insert(new_task).execute()
-        if not result.data:
-            return "No se pudo crear la tarea en la base de datos."
+        insert_with_fallback("tasks", new_task, optional_keys={"status", "priority", "category"})
         return f"Tarea agregada exitosamente: '{title}'."
     except Exception as e:
         print(f"Error creando tarea en Supabase: {e}")
         return f"Error al guardar la tarea: {e}"
+
+
+def set_task_completed(task_id: str, completed: bool) -> dict | None:
+    """Actualiza completed y status de forma consistente."""
+    fields = {"completed": completed, "status": "completado" if completed else "pendiente"}
+    try:
+        result = supabase.table("tasks").update(fields).eq("id", task_id).execute()
+    except Exception:
+        # Esquema antiguo sin columna status.
+        result = supabase.table("tasks").update({"completed": completed}).eq("id", task_id).execute()
+    return result.data[0] if result.data else None
+
+
+def update_task(
+    task_id: str,
+    title: str | None = None,
+    priority: str | None = None,
+    category: str | None = None,
+    due_date: str | None = None,
+    clear_due_date: bool = False,
+) -> dict | None:
+    """Edita campos de una tarea existente (solo los enviados)."""
+    fields: dict = {}
+    if title and title.strip():
+        fields["title"] = title.strip()
+    if priority:
+        fields["priority"] = _normalize_choice(priority, PRIORITIES, "media")
+    if category:
+        fields["category"] = _normalize_choice(category, CATEGORIES, "personal")
+    if due_date or clear_due_date:
+        fields["due_date"] = None if clear_due_date else due_date
+    if not fields:
+        return None
+
+    result = execute_with_fallback(
+        lambda data: supabase.table("tasks").update(data).eq("id", task_id),
+        fields,
+        optional_keys={"priority", "category"},
+    )
+    return result.data[0] if result.data else None
 
 
 def complete_task(title: str) -> str:
@@ -272,14 +379,8 @@ def complete_task(title: str) -> str:
 
     for task in tasks:
         task_title = task.get("title", "").strip().lower()
-        if search_title in task_title or task_title in search_title:
-            update_result = (
-                supabase.table("tasks")
-                .update({"completed": True})
-                .eq("id", task["id"])
-                .execute()
-            )
-            if update_result.data:
+        if search_title and (search_title in task_title or task_title in search_title):
+            if set_task_completed(task["id"], True):
                 return f"Tarea '{task['title']}' marcada como completada."
 
     return f"No encontré ninguna tarea pendiente que coincida con '{title}'."

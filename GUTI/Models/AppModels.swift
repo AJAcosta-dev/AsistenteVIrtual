@@ -37,6 +37,11 @@ enum TransactionCategory: String, CaseIterable, Codable {
     case shopping = "Compras"
     case other = "Otros"
     
+    /// Nombre corto para listas compactas (rawValue se conserva porque se envía al backend).
+    var shortName: String {
+        self == .entertainment ? "Ocio" : rawValue
+    }
+    
     var icon: String {
         switch self {
         case .food:
@@ -68,6 +73,8 @@ struct GutiTask: Identifiable, Codable {
     var dueDate: Date?
     var priority: TaskPriority
     var isCompleted: Bool
+    /// ID en Supabase. Las tareas antiguas pueden tener IDs que no son UUID.
+    var backendId: String
     
     init(
         id: UUID = UUID(),
@@ -75,9 +82,11 @@ struct GutiTask: Identifiable, Codable {
         category: TaskCategory = .personal,
         dueDate: Date? = nil,
         priority: TaskPriority = .medium,
-        isCompleted: Bool = false
+        isCompleted: Bool = false,
+        backendId: String? = nil
     ) {
         self.id = id
+        self.backendId = backendId ?? id.uuidString.lowercased()
         self.title = title
         self.category = category
         self.dueDate = dueDate
@@ -91,12 +100,26 @@ enum TaskCategory: String, CaseIterable, Codable {
     case work = "Trabajo"
     case personal = "Personal"
     case project = "Proyecto"
+
+    /// Valor almacenado en Supabase ("universidad", "trabajo", ...).
+    var backendValue: String { rawValue.lowercased() }
+
+    init(backendValue: String?) {
+        self = Self.allCases.first { $0.backendValue == backendValue?.lowercased() } ?? .personal
+    }
 }
 
 enum TaskPriority: String, CaseIterable, Codable {
     case low = "Baja"
     case medium = "Media"
     case high = "Alta"
+
+    /// Valor almacenado en Supabase ("alta", "media", "baja").
+    var backendValue: String { rawValue.lowercased() }
+
+    init(backendValue: String?) {
+        self = Self.allCases.first { $0.backendValue == backendValue?.lowercased() } ?? .medium
+    }
     
     var colorName: String {
         switch self {

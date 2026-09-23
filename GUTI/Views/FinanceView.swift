@@ -855,22 +855,36 @@ struct FinanceView: View {
                     height: 9
                 )
             
-            Text(title)
-                .foregroundStyle(
-                    Color.grayGuti
+            // Título arriba y monto abajo: los montos en millones no caben en una línea.
+            VStack(
+                alignment: .leading,
+                spacing: 2
+            ) {
+                Text(title)
+                    .font(
+                        .system(size: 12)
+                    )
+                    .foregroundStyle(
+                        Color.grayGuti
+                    )
+                
+                Text(
+                    formatCurrency(value)
                 )
+                .font(
+                    .system(
+                        size: 15,
+                        weight: .bold,
+                        design: .monospaced
+                    )
+                )
+                .foregroundStyle(color)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+            }
             
-            Text(
-                formatCurrency(value)
-            )
-            .foregroundStyle(color)
-            .fontWeight(.bold)
-            
-            Spacer()
+            Spacer(minLength: 0)
         }
-        .font(
-            .system(size: 14)
-        )
     }
     
     // MARK: - EXPENSE ITEM
@@ -891,13 +905,17 @@ struct FinanceView: View {
                     height: 10
                 )
             
-            Text(category.rawValue)
+            Text(category.shortName)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
             
-            Spacer()
+            Spacer(minLength: 4)
             
             Text(
                 formatCurrency(amount)
             )
+            .lineLimit(1)
+            .fixedSize()
             .foregroundStyle(
                 Color.grayGuti
             )

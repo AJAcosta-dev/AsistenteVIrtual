@@ -546,10 +546,11 @@ final class AppStore: ObservableObject {
                 return GutiTask(
                     id: UUID(uuidString: b.id) ?? UUID(),
                     title: b.title,
-                    category: .personal,
+                    category: TaskCategory(backendValue: b.category),
                     dueDate: dueDate,
-                    priority: .medium,
-                    isCompleted: b.completed
+                    priority: TaskPriority(backendValue: b.priority),
+                    isCompleted: b.completed,
+                    backendId: b.id
                 )
             }
             tasks.sort { compareTaskDates($0, $1) }
@@ -707,10 +708,14 @@ final class AppStore: ObservableObject {
         // Sincronizar en background con Supabase
         Task {
             do {
+                // Se envía el mismo ID local para poder completar/borrar sin recargar.
                 _ = try await APIService.shared.addTask(
+                    id: task.backendId,
                     title: cleanTitle,
                     description: nil,
-                    dueDate: dueDate.map { APIService.iso8601String(from: $0) }
+                    dueDate: dueDate.map { APIService.iso8601String(from: $0) },
+                    priority: priority.backendValue,
+                    category: category.backendValue
                 )
             } catch {
                 print("❌ Error sincronizando tarea en backend: \(error)")
@@ -724,9 +729,38 @@ final class AppStore: ObservableObject {
 
         Task {
             do {
-                try await APIService.shared.toggleTask(id: task.id.uuidString.lowercased())
+                try await APIService.shared.toggleTask(id: task.backendId)
             } catch {
                 print("❌ Error toggling task en backend: \(error)")
+            }
+        }
+    }
+
+    func updateTask(
+        _ task: GutiTask,
+        title: String,
+        category: TaskCategory,
+        dueDate: Date?,
+        priority: TaskPriority
+    ) {
+        guard let index = tasks.firstIndex(where: { $0.id == task.id }) else { return }
+        tasks[index].title = title
+        tasks[index].category = category
+        tasks[index].dueDate = dueDate
+        tasks[index].priority = priority
+        tasks.sort { compareTaskDates($0, $1) }
+
+        Task {
+            do {
+                try await APIService.shared.updateTask(
+                    id: task.backendId,
+                    title: title,
+                    priority: priority.backendValue,
+                    category: category.backendValue,
+                    dueDate: dueDate.map { APIService.iso8601String(from: $0) }
+                )
+            } catch {
+                print("❌ Error actualizando tarea en backend: \(error)")
             }
         }
     }
@@ -736,7 +770,7 @@ final class AppStore: ObservableObject {
 
         Task {
             do {
-                try await APIService.shared.deleteTask(id: task.id.uuidString.lowercased())
+                try await APIService.shared.deleteTask(id: task.backendId)
             } catch {
                 print("❌ Error eliminando tarea en backend: \(error)")
             }

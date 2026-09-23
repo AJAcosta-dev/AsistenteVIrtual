@@ -31,6 +31,14 @@ Arquitectura, diagramas de secuencia y esquema relacional: [docs/ARQUITECTURA.md
 1. En el panel de Supabase abre **SQL Editor**.
 2. Pega el contenido de [`backend/schema.sql`](backend/schema.sql) y ejecútalo.
    Es idempotente: crea las tablas que falten, agrega columnas nuevas, activa RLS y carga datos semilla.
+   Vuelve a ejecutarlo cada vez que el archivo cambie (no borra datos).
+3. Opcional, para la demo: carga gastos, ingresos, tareas y eventos del mes actual.
+
+```bash
+cd backend
+.venv/bin/python scripts/seed_demo_data.py          # crear datos demo
+.venv/bin/python scripts/seed_demo_data.py --clean  # borrar solo los datos demo
+```
 
 ## 3. Backend
 
@@ -45,6 +53,22 @@ ollama pull llama3.2
 ```
 
 Prueba rápida: `curl http://127.0.0.1:8000/health`. Documentación interactiva: `http://127.0.0.1:8000/docs`.
+
+### Correo real (Agente de Secretaría)
+
+Sin configuración, GUTI usa un buzón de ejemplo. Para leer tu Gmail real y guardar borradores en él:
+
+1. Activa la verificación en 2 pasos en tu cuenta de Google.
+2. Crea una contraseña de aplicación en https://myaccount.google.com/apppasswords.
+3. Agrégala a `backend/.env`:
+
+```
+MAIL_ADDRESS=tu_correo@gmail.com
+MAIL_APP_PASSWORD=abcd efgh ijkl mnop
+```
+
+GUTI lee los últimos 25 correos de la bandeja de entrada sin marcarlos como leídos, prioriza los
+urgentes y guarda los borradores en tu carpeta **Borradores** (nunca envía correos por su cuenta).
 
 ## 4. Tailscale
 
@@ -68,13 +92,13 @@ No se abren puertos del router ni se usan túneles públicos: todo el tráfico v
    - **Obtener contenido de URL**
      - URL: `http://100.x.x.x:8000/api/banking/webhook`
      - Método: `POST`, Cuerpo: `JSON`, campo `text` = *Mensaje del correo* (variable de la automatización)
-     - Header opcional `X-GUTI-Token` si definiste `WEBHOOK_TOKEN` en `.env`
+     - Header `X-GUTI-Token` con el valor de `WEBHOOK_TOKEN` de `backend/.env` (sin él, el backend responde 401)
 4. Guarda. Cada alerta bancaria queda registrada como transacción con `source = 'webhook'`.
 
 Simular una alerta sin esperar al banco:
 
 ```bash
-./backend/scripts/simulate_bank_webhook.sh 100.x.x.x
+WEBHOOK_TOKEN=$(grep ^WEBHOOK_TOKEN backend/.env | cut -d= -f2-) ./backend/scripts/simulate_bank_webhook.sh 100.x.x.x
 ```
 
 ## 7. Comandos de voz para la demo
@@ -86,4 +110,5 @@ Simular una alerta sin esperar al banco:
 | "¿Cuánto me queda para el fin de semana y qué tareas tengo pendientes?" | Multi-agente |
 | "¿Cómo están mis tarjetas de crédito?" | Financiero |
 | "Redacta una excusa formal para el profesor Gómez indicando incapacidad médica" | Secretaría |
-| "Agrega una tarea de estudiar cálculo" | Secretaría |
+| "Agrega una tarea urgente de estudiar cálculo para la universidad" | Secretaría |
+| "¿Tengo correos no leídos?" | Secretaría |
